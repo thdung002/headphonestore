@@ -14,7 +14,8 @@ class WPCF7_FormTag implements ArrayAccess {
 	public $content = '';
 
 	public function __construct( $tag = array() ) {
-		if ( is_array( $tag ) || $tag instanceof self ) {
+		if ( is_array( $tag )
+		or $tag instanceof self ) {
 			foreach ( $tag as $key => $value ) {
 				if ( property_exists( __CLASS__, $key ) ) {
 					$this->{$key} = $value;
@@ -104,7 +105,8 @@ class WPCF7_FormTag implements ArrayAccess {
 		$matches_a = $this->get_all_match_options( '%^([0-9]*)/[0-9]*$%' );
 
 		foreach ( (array) $matches_a as $matches ) {
-			if ( isset( $matches[1] ) && '' !== $matches[1] ) {
+			if ( isset( $matches[1] )
+			and '' !== $matches[1] ) {
 				return $matches[1];
 			}
 		}
@@ -171,7 +173,8 @@ class WPCF7_FormTag implements ArrayAccess {
 			'%^([0-9]*)x([0-9]*)(?:/[0-9]+)?$%' );
 
 		foreach ( (array) $matches_a as $matches ) {
-			if ( isset( $matches[2] ) && '' !== $matches[2] ) {
+			if ( isset( $matches[2] )
+			and '' !== $matches[2] ) {
 				return $matches[2];
 			}
 		}
@@ -194,9 +197,14 @@ class WPCF7_FormTag implements ArrayAccess {
 				$unit = 'days';
 			}
 
-			$date = gmdate( 'Y-m-d',
-				strtotime( sprintf( 'today %1$s %2$s', $number, $unit ) ) );
-			return $date;
+			// Temporary fix until introducing wp_date()
+			$today = gmdate( 'Y-m-d',
+				time() + get_option( 'gmt_offset' ) * HOUR_IN_SECONDS
+			);
+
+			$format = sprintf( '%1$s %2$s %3$s', $today, $number, $unit );
+
+			return gmdate( 'Y-m-d', strtotime( $format ) );
 		}
 
 		return false;
@@ -218,7 +226,8 @@ class WPCF7_FormTag implements ArrayAccess {
 		foreach ( $options as $opt ) {
 			$opt = sanitize_key( $opt );
 
-			if ( 'user_' == substr( $opt, 0, 5 ) && is_user_logged_in() ) {
+			if ( 'user_' == substr( $opt, 0, 5 )
+			and is_user_logged_in() ) {
 				$primary_props = array( 'user_login', 'user_email', 'user_url' );
 				$opt = in_array( $opt, $primary_props ) ? $opt : substr( $opt, 5 );
 
@@ -233,7 +242,7 @@ class WPCF7_FormTag implements ArrayAccess {
 					}
 				}
 
-			} elseif ( 'post_meta' == $opt && in_the_loop() ) {
+			} elseif ( 'post_meta' == $opt and in_the_loop() ) {
 				if ( $args['multiple'] ) {
 					$values = array_merge( $values,
 						get_post_meta( get_the_ID(), $this->name ) );
@@ -245,7 +254,7 @@ class WPCF7_FormTag implements ArrayAccess {
 					}
 				}
 
-			} elseif ( 'get' == $opt && isset( $_GET[$this->name] ) ) {
+			} elseif ( 'get' == $opt and isset( $_GET[$this->name] ) ) {
 				$vals = (array) $_GET[$this->name];
 				$vals = array_map( 'wpcf7_sanitize_query_var', $vals );
 
@@ -259,7 +268,7 @@ class WPCF7_FormTag implements ArrayAccess {
 					}
 				}
 
-			} elseif ( 'post' == $opt && isset( $_POST[$this->name] ) ) {
+			} elseif ( 'post' == $opt and isset( $_POST[$this->name] ) ) {
 				$vals = (array) $_POST[$this->name];
 				$vals = array_map( 'wpcf7_sanitize_query_var', $vals );
 
@@ -316,6 +325,30 @@ class WPCF7_FormTag implements ArrayAccess {
 		$options = (array) $this->get_option( 'data' );
 
 		return apply_filters( 'wpcf7_form_tag_data_option', null, $options, $args );
+	}
+
+	public function get_limit_option( $default = 1048576 ) { // 1048576 = 1 MB
+		$pattern = '/^limit:([1-9][0-9]*)([kKmM]?[bB])?$/';
+
+		$matches = $this->get_first_match_option( $pattern );
+
+		if ( $matches ) {
+			$size = (int) $matches[1];
+
+			if ( ! empty( $matches[2] ) ) {
+				$kbmb = strtolower( $matches[2] );
+
+				if ( 'kb' == $kbmb ) {
+					$size *= 1024;
+				} elseif ( 'mb' == $kbmb ) {
+					$size *= 1024 * 1024;
+				}
+			}
+
+			return $size;
+		}
+
+		return (int) $default;
 	}
 
 	public function get_first_match_option( $pattern ) {

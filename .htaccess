@@ -9,4 +9,5 @@ RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule . /headphonestore/index.php [L]
 </IfModule>
+
 # END WordPress
